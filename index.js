@@ -398,19 +398,19 @@ app.get('/api/ack_out/test/true', async (req, res) => {
 });
 
 // ── GET /api/info ─────────────────────────────────────────────
-app.get('/api/info', async (req, res) => {
-    res.json({
-        ok: true,
-        status: 200,
-        data: {
-            name: process.env.TEAM_NAME,
-            bic: process.env.TEAM_BIC,
-            members: process.env.TEAM_MEMBERS,
-            lokaal: 'HER 3 - 4405',
-            coaches: 'Anissa Faik & Turgut Reis Kursun'
-        }
-    });
-});
+        app.get('/api/info', async (req, res) => {
+            res.json({                                                                                                                               
+                ok: true,                                               
+                status: 200,
+                code: 2000,
+                message: 'OK',
+                data: {
+                    team: process.env.TEAM_NAME,
+                    bic: process.env.TEAM_BIC,
+                    members: (process.env.TEAM_MEMBERS || '').split(',')
+                }
+            });
+        });
 
 // ── GET /api/help ─────────────────────────────────────────────
 app.get('/api/help', async (req, res) => {
