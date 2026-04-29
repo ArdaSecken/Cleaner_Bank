@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXA Clearflow – Clearing Bank</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- ══════════════ LOGIN SCREEN ══════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">CB</div>
+      <div>
+        <div class="login-title">AXA Clearflow</div>
+        <div class="login-sub">Clearing Bank · AXABBE22</div>
+      </div>
+    </div>
+    <div class="login-body">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" type="text" id="login-user" placeholder="admin" autocomplete="off">
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="login-error" style="display:none;color:#c62828;font-size:12px;margin-top:10px;padding:8px 12px;background:#fdecea;border-radius:4px"></div>
+      <button class="btn primary" style="width:100%;margin-top:20px;padding:10px" onclick="doLogin()">Sign In</button>
+    </div>
+    <div class="login-footer">PingFin 2026 · Team 2 · HER 3 – 4405</div>
+  </div>
+</div>
+<!-- ══════════════ LOGIN SCREEN ══════════════ -->
+
+<!-- ══════════════ MAIN APP ══════════════ -->
+<div id="app" style="display:none">
+<!-- ══════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════ -->
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <img src="img/logo.png" alt="Logo" class="logo-icon">
+        <div class="logo-sub">Clearflow CB v2.4.0</div>
+    </div>
+
+    <nav class="nav">
+        <div class="nav-section">Main</div>
+
+        <div class="nav-item active" onclick="showPage('dashboard', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="1" y="1" width="6" height="6" rx="1"/>
+                <rect x="9" y="1" width="6" height="6" rx="1"/>
+                <rect x="1" y="9" width="6" height="6" rx="1"/>
+                <rect x="9" y="9" width="6" height="6" rx="1"/>
+            </svg>
+            Dashboard
+        </div>
+
+        <div class="nav-item" onclick="showPage('transactions', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1 3h14v1.5H1zm0 4h14v1.5H1zm0 4h14v1.5H1z"/>
+            </svg>
+            Transactions
+            <span class="nav-badge" id="badge-po">0</span>
+        </div>
+
+        <div class="nav-section">Operations</div>
+
+        <div class="nav-item" onclick="showPage('validation', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1L1 4v4c0 4 3.5 6.5 7 7 3.5-.5 7-3 7-7V4L8 1z"/>
+            </svg>
+            Validation Console
+        </div>
+
+        <div class="nav-item" onclick="showPage('banks', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1l7 3.5V6H1V4.5L8 1zM2 7h2v5H2zm4 0h2v5H6zm4 0h2v5h-2zm-9 6h14v1.5H1z"/>
+            </svg>
+            Network Monitor
+        </div>
+
+        <div class="nav-section">Processing</div>
+
+        <div class="nav-item" onclick="showPage('po_in', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 14l-7-7h4V2h6v5h4z"/>
+            </svg>
+            PO Queue
+        </div>
+
+        <div class="nav-item" onclick="showPage('ack', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M2 8l4 4 8-8"/>
+            </svg>
+            ACK Processing
+        </div>
+
+        <div class="nav-section">Admin</div>
+
+        <div class="nav-item" id="nav-users" onclick="showPage('users', this)" style="display:none">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6a5 5 0 0110 0H3z"/>
+            </svg>
+            User Management
+        </div>
+
+        <div class="nav-item" onclick="showPage('log', this)">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1 1h14v2H1zm0 4h14v2H1zm0 4h14v2H1zm0 4h8v2H1z"/>
+            </svg>
+            Audit Log
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="status-row">
+            <div class="status-dot" id="sys-dot"></div>
+            <span id="sys-status">Connecting...</span>
+        </div>
+        <div class="user-row">
+            <div class="user-avatar" id="user-avatar">?</div>
+            <div>
+                <div class="user-name" id="user-name">—</div>
+                <div class="user-role" id="user-role">—</div>
+            </div>
+            <div style="margin-left:auto;cursor:pointer;color:rgba(255,255,255,.5);font-size:11px" onclick="doLogout()">Logout</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════ -->
+<div class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="page-title" id="page-title">Dashboard</div>
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--muted)">
+                    <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <input type="text" placeholder="Search Transaction ID, IBAN, or Bank...">
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="operational-pill" id="op-pill">System Operational</div>
+            <div class="bic-pill">AXABBE22</div>
+            <div class="topbar-clock" id="clock">—</div>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+        <!-- ══ DASHBOARD ══ -->
+        <div class="page active" id="page-dashboard">
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">Total Volume (PO_IN)</div>
+                    <div class="stat-value" id="s-po-in">—</div>
+                    <div class="stat-delta">in PO_IN tabel</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Active Queues (PO_OUT)</div>
+                    <div class="stat-value" id="s-po-out">—</div>
+                    <div class="stat-delta">wachtrij voor BB</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">ACK's Verwerkt</div>
+                    <div class="stat-value" id="s-ack">—</div>
+                    <div class="stat-delta">in ACK_IN</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Registered Banks</div>
+                    <div class="stat-value" id="s-banks">—</div>
+                    <div class="stat-delta">in CB systeem</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">SEPA Credit Transfer – Routing Lifecycle</div>
+                </div>
+                <div class="flow-diagram">
+                    <div class="flow-node">
+                        <div class="flow-box">OB</div>
+                        <div class="flow-node-label">Originating Bank</div>
+                    </div>
+                    <div class="flow-arrow-wrap">
+                        <div class="flow-arrow-line">→</div>
+                        <div class="flow-endpoint-label">POST /api/po_in</div>
+                    </div>
+                    <div class="flow-node">
+                        <div class="flow-box cb">CB</div>
+                        <div class="flow-node-label">AXA Clearing Hub</div>
+                    </div>
+                    <div class="flow-arrow-wrap">
+                        <div class="flow-arrow-line">→</div>
+                        <div class="flow-endpoint-label">GET /api/po_out</div>
+                    </div>
+                    <div class="flow-node">
+                        <div class="flow-box bb">BB</div>
+                        <div class="flow-node-label">Beneficiary Bank</div>
+                    </div>
+                </div>
+                <div class="flow-diagram return-flow">
+                    <div class="flow-spacer"></div>
+                    <div class="flow-arrow-wrap" style="transform:scaleX(-1)">
+                        <div class="flow-arrow-line">→</div>
+                        <div class="flow-endpoint-label" style="transform:scaleX(-1)">GET /api/ack_out</div>
+                    </div>
+                    <div class="flow-spacer"></div>
+                    <div class="flow-arrow-wrap" style="transform:scaleX(-1)">
+                        <div class="flow-arrow-line">→</div>
+                        <div class="flow-endpoint-label" style="transform:scaleX(-1)">POST /api/ack_in</div>
+                    </div>
+                    <div class="flow-spacer"></div>
+                </div>
+            </div>
+
+            <div class="two-col">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Live Transaction Queue (PO_OUT)</div>
+                        <button class="btn sm" onclick="loadDashboard()">↻ Refresh</button>
+                    </div>
+                    <div id="dash-po-out"><div class="empty">Laden...</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Recent PO_IN</div>
+                    </div>
+                    <div id="dash-po-in"><div class="empty">Laden...</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TRANSACTIONS ══ -->
+        <div class="page" id="page-transactions">
+            <div class="card" style="flex:1">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Transaction Ledger</div>
+                        <div class="card-subtitle">Monitor and manage interbank payment orders</div>
+                    </div>
+                    <div class="card-actions">
+                        <select class="btn sm" id="tx-filter" onchange="loadTransactions()" style="font-family:var(--sans)">
+                            <option value="all">All Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="ok">Completed</option>
+                        </select>
+                        <button class="btn sm primary" onclick="loadTransactions()">↻ Laden</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Value Date</th>
+                                <th>Sender / Receiver (BIC)</th>
+                                <th>Amount</th>
+                                <th>CB Status</th>
+                                <th>BB Status</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tx-body">
+                            <tr><td colspan="7"><div class="empty">Klik op Laden</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ VALIDATION CONSOLE ══ -->
+        <div class="page" id="page-validation">
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Validation Rules – CB Error Codes</div>
+                </div>
+                <div class="v-list">
+                    <div class="v-item">
+                        <div class="v-code" style="color:var(--green)">2000</div>
+                        <div class="v-desc">Payment Order successfully processed by Clearing Bank</div>
+                        <div class="v-rule">RL-CB-OK</div>
+                        <div class="badge ok"><div class="badge-dot"></div>Passed</div>
+                    </div>
+                    <div class="v-item">
+                        <div class="v-code" style="color:#C62828">4002</div>
+                        <div class="v-desc">Transaction amount exceeds the €500 maximum limit</div>
+                        <div class="v-rule">RL-CB-002</div>
+                        <div class="badge err"><div class="badge-dot"></div>Failed</div>
+                    </div>
+                    <div class="v-item">
+                        <div class="v-code" style="color:#C62828">4003</div>
+                        <div class="v-desc">Transaction amount is negative or zero — invalid</div>
+                        <div class="v-rule">RL-CB-003</div>
+                        <div class="badge err"><div class="badge-dot"></div>Failed</div>
+                    </div>
+                    <div class="v-item">
+                        <div class="v-code" style="color:#C62828">4004</div>
+                        <div class="v-desc">bb_id does not exist in CB system — unknown beneficiary bank</div>
+                        <div class="v-rule">RL-CB-004</div>
+                        <div class="badge err"><div class="badge-dot"></div>Failed</div>
+                    </div>
+                    <div class="v-item">
+                        <div class="v-code" style="color:#C62828">4005</div>
+                        <div class="v-desc">Duplicate PO detected — po_id already received by Clearing Bank</div>
+                        <div class="v-rule">RL-CB-005</div>
+                        <div class="badge err"><div class="badge-dot"></div>Failed</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Simulation Workbench</div>
+                        <div class="card-subtitle">Test a PO against CB validation rules</div>
+                    </div>
+                    <div class="sandbox-badge">Sandbox Mode</div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <div class="form-label">po_id</div>
+                        <input class="form-input" id="v-po_id" placeholder="AXABBE22_TEST001">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">po_amount (max €500)</div>
+                        <input class="form-input" id="v-amount" type="number" placeholder="150.00" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">ob_id (Sender BIC)</div>
+                        <input class="form-input" id="v-ob_id" placeholder="AXABBE22">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">bb_id (Receiver BIC)</div>
+                        <input class="form-input" id="v-bb_id" placeholder="CVMCBEBB">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">oa_id (Sender IBAN)</div>
+                        <input class="form-input" id="v-oa_id" placeholder="BE68539007547034">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">ba_id (Receiver IBAN)</div>
+                        <input class="form-input" id="v-ba_id" placeholder="BE71096123456769">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn primary" onclick="testValidation(this)">Run Simulation</button>
+                    <button class="btn" onclick="fillValDemo()">Load Demo Data</button>
+                </div>
+                <div class="response" id="v-response"></div>
+            </div>
+        </div>
+
+        <!-- ══ NETWORK MONITOR / BANKS ══ -->
+        <div class="page" id="page-banks">
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Network Monitor – Registered Banks</div>
+                        <div class="card-subtitle">All banks known to the AXA Clearing Hub</div>
+                    </div>
+                    <button class="btn sm primary" onclick="loadBanks()">↻ Refresh</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>BIC Code</th>
+                                <th>Bank Name</th>
+                                <th>Description / Team</th>
+                            </tr>
+                        </thead>
+                        <tbody id="banks-body">
+                            <tr><td colspan="3"><div class="empty">Klik op Refresh</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Register / Update Bank</div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <div class="form-label">BIC Code</div>
+                        <input class="form-input" id="b-id" placeholder="BBRUBEBB">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">Bank Name</div>
+                        <input class="form-input" id="b-name" placeholder="ING België NV">
+                    </div>
+                    <div class="form-group full">
+                        <div class="form-label">Description / Team Members</div>
+                        <input class="form-input" id="b-desc" placeholder="Team 5 – lokaal B02">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn primary" onclick="registerBank(this)">Save Bank</button>
+                </div>
+                <div class="response" id="b-response"></div>
+            </div>
+        </div>
+
+        <!-- ══ PO QUEUE ══ -->
+        <div class="page" id="page-po_in">
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Submit Payment Order – POST /api/po_in</div>
+                        <div class="card-subtitle">As Originating Bank, send a PO to the Clearing Bank</div>
+                    </div>
+                    <button class="btn sm" onclick="fillPODemo()">Load Demo</button>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <div class="form-label">po_id</div>
+                        <input class="form-input" id="pi-id">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">po_amount (max €500)</div>
+                        <input class="form-input" id="pi-amount" type="number" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">po_message</div>
+                        <input class="form-input" id="pi-message" placeholder="Huur april 2026">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">po_datetime</div>
+                        <input class="form-input" id="pi-dt">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">ob_id (Sender BIC)</div>
+                        <input class="form-input" id="pi-ob_id" placeholder="AXABBE22">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">oa_id (Sender IBAN)</div>
+                        <input class="form-input" id="pi-oa_id" placeholder="BE68539007547034">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">ob_code</div>
+                        <input class="form-input" id="pi-ob_code" value="2000">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">ob_datetime</div>
+                        <input class="form-input" id="pi-ob_dt">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">bb_id (Receiver BIC)</div>
+                        <input class="form-input" id="pi-bb_id" placeholder="CVMCBEBB">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">ba_id (Receiver IBAN)</div>
+                        <input class="form-input" id="pi-ba_id" placeholder="BE71096123456769">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn primary" onclick="sendPOIn(this)">Submit to CB</button>
+                </div>
+                <div class="response" id="pi-response"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Fetch PO_OUT – GET /api/po_out</div>
+                        <div class="card-subtitle">As Beneficiary Bank, fetch POs from CB outbox</div>
+                    </div>
+                    <label class="test-mode-label">
+                        <input type="checkbox" id="po-test" checked>
+                        Test mode (no delete)
+                    </label>
+                </div>
+                <div class="form-section-pad">
+                    <button class="btn primary" onclick="fetchPOOut(this)">Fetch PO's</button>
+                </div>
+                <div class="response" id="po-out-response"></div>
+                <div id="po-out-table"></div>
+            </div>
+        </div>
+
+        <!-- ══ ACK PROCESSING ══ -->
+        <div class="page" id="page-ack">
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Submit ACK – POST /api/ack_in</div>
+                        <div class="card-subtitle">As Beneficiary Bank, send acknowledgement back to CB</div>
+                    </div>
+                </div>
+                <div class="form-section-pad">
+                    <p class="form-note">Paste a PO object from /api/po_out. Add bb_code and bb_datetime before submitting.</p>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <div class="form-label">PO JSON (from /api/po_out)</div>
+                        <textarea class="form-input" id="ack-json" rows="4" placeholder='{"po_id":"AXABBE22_TEST001","po_amount":150,...}'></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">bb_code</div>
+                        <input class="form-input" id="ack-bb_code" value="2000">
+                    </div>
+                    <div class="form-group">
+                        <div class="form-label">bb_datetime</div>
+                        <input class="form-input" id="ack-bb_dt">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn primary" onclick="sendACKIn(this)">Submit ACK</button>
+                </div>
+                <div class="response" id="ack-response"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Fetch ACK_OUT – GET /api/ack_out</div>
+                        <div class="card-subtitle">As Originating Bank, fetch acknowledgements from CB</div>
+                    </div>
+                    <label class="test-mode-label">
+                        <input type="checkbox" id="ack-test" checked>
+                        Test mode (no delete)
+                    </label>
+                </div>
+                <div class="form-section-pad">
+                    <button class="btn primary" onclick="fetchACKOut(this)">Fetch ACK's</button>
+                </div>
+                <div class="response" id="ack-out-response"></div>
+                <div id="ack-out-table"></div>
+            </div>
+        </div>
+
+
+        <!-- ══ USER MANAGEMENT ══ -->
+        <div class="page" id="page-users">
+            <div class="two-col">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Gebruikers</div>
+                            <div class="card-subtitle">Beheer GUI gebruikers</div>
+                        </div>
+                        <button class="btn sm" onclick="loadUsers()">↻ Refresh</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Role</th>
+                                    <th>Aangemaakt</th>
+                                    <th>Actie</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-body">
+                                <tr><td colspan="5"><div class="empty">Klik Refresh</div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Nieuwe Gebruiker Aanmaken</div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <div class="form-label">Username</div>
+                            <input class="form-input" id="nu-user" placeholder="gebruiker123">
+                        </div>
+                        <div class="form-group full">
+                            <div class="form-label">Password</div>
+                            <input class="form-input" type="password" id="nu-pass" placeholder="••••••••">
+                        </div>
+                        <div class="form-group full">
+                            <div class="form-label">Role</div>
+                            <select class="form-input" id="nu-role">
+                                <option value="user">user</option>
+                                <option value="admin">admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn primary" onclick="createUser(this)">Aanmaken</button>
+                    </div>
+                    <div class="response" id="nu-response"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ AUDIT LOG ══ -->
+        <div class="page" id="page-log">
+            <div class="card" style="flex:1">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Audit Log – Event Stream</div>
+                        <div class="card-subtitle">All PO events processed by the AXA Clearing Hub</div>
+                    </div>
+                    <button class="btn sm primary" onclick="loadLog()">↻ Load Events</button>
+                </div>
+                <div class="log-stream" id="log-full" style="max-height:500px">
+                    <div class="empty">Klik op Load Events</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end content -->
+</div><!-- end main -->
+
+</div><!-- end app -->
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  cb_app:
+    container_name: ${APP_CONTAINER_NAME:-cb_app}
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - pingfin_net
+      - db_internal
+
+  db:
+    container_name: ${DB_CONTAINER_NAME:-cb_db}
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - db_internal
+
+networks:
+  pingfin_net:
+    external: true
+  db_internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  db_data:
