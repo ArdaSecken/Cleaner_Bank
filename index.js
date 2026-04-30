@@ -32,6 +32,37 @@ async function getPool() {
 }
 const getConn = getPool;
 
+async function ensureSchema() {
+    const conn = await getPool();
+
+    try {
+        await ensureColumn(conn, 'ACK_IN', 'bb_code', "VARCHAR(10) DEFAULT NULL");
+        await ensureColumn(conn, 'ACK_IN', 'bb_datetime', "DATETIME DEFAULT NULL");
+        await ensureColumn(conn, 'ACK_OUT', 'bb_code', "VARCHAR(10) DEFAULT NULL");
+        await ensureColumn(conn, 'ACK_OUT', 'bb_datetime', "DATETIME DEFAULT NULL");
+        await ensureColumn(conn, 'LOG', 'bb_code', "VARCHAR(10) DEFAULT NULL");
+    } finally {
+        await conn.end();
+    }
+}
+
+async function ensureColumn(conn, tableName, columnName, definition) {
+    const [rows] = await conn.execute(
+        `
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = ?
+              AND TABLE_NAME = ?
+              AND COLUMN_NAME = ?
+        `,
+        [config.database, tableName, columnName]
+    );
+
+    if (rows.length === 0) {
+        await conn.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+    }
+}
+
 const issuedTokens = new Map();
 const TOKEN_TTL_MS = 4 * 60 * 60 * 1000;
 const CB_SHARED_SECRET =
@@ -635,6 +666,14 @@ app.delete('/auth/users/:id', async (req, res) => {
 // ════════════════════════════════════════════════════════════
 
 const PORT = process.env.PORT || 80;
-app.listen(PORT, () => {
-    console.log('CB API DRAAIT op poort ' + PORT);
-});
+
+ensureSchema()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log('CB API DRAAIT op poort ' + PORT);
+        });
+    })
+    .catch((err) => {
+        console.error('Schema migration failed:', err.message);
+        process.exit(1);
+    });

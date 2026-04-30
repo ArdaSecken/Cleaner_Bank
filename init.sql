@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS LOG (
     ob_id       VARCHAR(8)   DEFAULT NULL,
     bb_id       VARCHAR(8)   DEFAULT NULL,
     cb_code     VARCHAR(10)  DEFAULT NULL,
+    bb_code     VARCHAR(10)  DEFAULT NULL,
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 );
@@ -109,4 +110,3 @@ CREATE TABLE IF NOT EXISTS USERS (
 INSERT INTO BANKS VALUES ('AXABBE22', 'PingFin Clearing Bank Team 2', 'Emirhan, Rania, Arda, Denzl', NULL);
 
 INSERT INTO USERS (username, password, role) VALUES ('admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
-
