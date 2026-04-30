@@ -238,9 +238,9 @@ async function loadTransactions() {
     } catch (e) {
         document.getElementById('tx-body').innerHTML =
             '<tr><td colspan="7"><div class="empty">API not reachable</div></td></tr>';
+    } finally {
+        if (btn) setBtn(btn, false);
     }
-
-    if (btn) setBtn(btn, false);
 }
 
 // ── BANKS ────────────────────────────────────────────────────
