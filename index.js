@@ -13,7 +13,6 @@ app.use(cors({
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
   }));
-  app.options('*', cors());
 
 
 app.use(express.json());
