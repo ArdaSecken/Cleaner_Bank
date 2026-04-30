@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -31,6 +32,76 @@ async function getPool() {
     return await mysql.createConnection(config);
 }
 const getConn = getPool;
+
+const issuedTokens = new Map();
+const TOKEN_TTL_MS = 4 * 60 * 60 * 1000;
+const CB_SHARED_SECRET =
+    process.env.CB_SHARED_SECRET ||
+    process.env.LOCAL_SECRET_KEY ||
+    process.env.SECRET_KEY ||
+    '49683708e11f2a70';
+
+function registerGet(paths, ...handlers) {
+    for (const routePath of paths) {
+        app.get(routePath, ...handlers);
+    }
+}
+
+function registerPost(paths, ...handlers) {
+    for (const routePath of paths) {
+        app.post(routePath, ...handlers);
+    }
+}
+
+function pruneExpiredTokens() {
+    const now = Date.now();
+
+    for (const [token, entry] of issuedTokens.entries()) {
+        if (entry.expiresAt <= now) {
+            issuedTokens.delete(token);
+        }
+    }
+}
+
+function createAccessToken(bic) {
+    pruneExpiredTokens();
+
+    const token = crypto.randomBytes(24).toString('hex');
+    const expiresAt = Date.now() + TOKEN_TTL_MS;
+
+    issuedTokens.set(token, { bic, expiresAt });
+
+    return {
+        token,
+        expiresAt
+    };
+}
+
+function requireCbAuth(req, res, next) {
+    pruneExpiredTokens();
+
+    const authorizationHeader = req.get('Authorization');
+
+    if (!authorizationHeader) {
+        return res.status(401).json({ ok: false, status: 401, message: 'Missing Authorization header' });
+    }
+
+    const [scheme, token] = authorizationHeader.split(' ');
+
+    if (scheme !== 'Bearer' || !token) {
+        return res.status(401).json({ ok: false, status: 401, message: 'Invalid bearer token' });
+    }
+
+    const tokenEntry = issuedTokens.get(token);
+
+    if (!tokenEntry || tokenEntry.expiresAt <= Date.now()) {
+        issuedTokens.delete(token);
+        return res.status(401).json({ ok: false, status: 401, message: 'Invalid bearer token' });
+    }
+
+    req.cbAuth = { bic: tokenEntry.bic };
+    next();
+}
 // ── HELPER FUNCTIES ───────────────────────────────────────────
 
 function randomIBAN() {
@@ -157,8 +228,38 @@ app.get('/test-po-in', async (req, res) => {
 // ECHTE CB API ENDPOINTS
 // ════════════════════════════════════════════════════════════
 
+// ── POST /token and /api/token ───────────────────────────────
+registerPost(['/token', '/api/token'], async (req, res) => {
+    try {
+        const { bic, secret_key } = req.body || {};
+
+        if (!bic || !secret_key) {
+            return res.status(400).json({ ok: false, status: 400, message: 'bic en secret_key zijn verplicht' });
+        }
+
+        if (secret_key !== CB_SHARED_SECRET) {
+            return res.status(401).json({ ok: false, status: 401, message: 'Invalid secret key' });
+        }
+
+        const { token, expiresAt } = createAccessToken(bic);
+
+        res.json({
+            ok: true,
+            status: 200,
+            token,
+            data: {
+                token,
+                bic,
+                expires_at: new Date(expiresAt).toISOString()
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ ok: false, status: 500, message: err.message });
+    }
+});
+
 // ── GET /api/banks ────────────────────────────────────────────
-app.get('/api/banks', async (req, res) => {
+registerGet(['/banks', '/api/banks'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
         const [rows] = await conn.execute("SELECT id, name, description FROM BANKS");
@@ -170,7 +271,7 @@ app.get('/api/banks', async (req, res) => {
 });
 
 // ── POST /api/banks ───────────────────────────────────────────
-app.post('/api/banks', async (req, res) => {
+registerPost(['/banks', '/api/banks'], requireCbAuth, async (req, res) => {
     try {
         const { id, name, description } = req.body;
 
@@ -206,7 +307,7 @@ app.post('/api/banks', async (req, res) => {
 });
 
 // ── POST /api/po_in ───────────────────────────────────────────
-app.post('/api/po_in', async (req, res) => {
+registerPost(['/po_in', '/api/po_in'], requireCbAuth, async (req, res) => {
     try {
         const { data } = req.body;
 
@@ -291,7 +392,7 @@ app.post('/api/po_in', async (req, res) => {
 });
 
 // ── GET /api/po_out ───────────────────────────────────────────
-app.get('/api/po_out', async (req, res) => {
+registerGet(['/po_out', '/api/po_out'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
         const [rows] = await conn.execute("SELECT * FROM PO_OUT");
@@ -309,7 +410,7 @@ app.get('/api/po_out', async (req, res) => {
 });
 
 // ── GET /api/po_out/test/true ─────────────────────────────────
-app.get('/api/po_out/test/true', async (req, res) => {
+registerGet(['/po_out/test/true', '/api/po_out/test/true'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
         const [rows] = await conn.execute("SELECT * FROM PO_OUT");
@@ -321,7 +422,7 @@ app.get('/api/po_out/test/true', async (req, res) => {
 });
 
 // ── POST /api/ack_in ──────────────────────────────────────────
-app.post('/api/ack_in', async (req, res) => {
+registerPost(['/ack_in', '/api/ack_in'], requireCbAuth, async (req, res) => {
     try {
         const { data } = req.body;
 
@@ -376,7 +477,7 @@ app.post('/api/ack_in', async (req, res) => {
 });
 
 // ── GET /api/ack_out ──────────────────────────────────────────
-app.get('/api/ack_out', async (req, res) => {
+registerGet(['/ack_out', '/api/ack_out'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
         const [rows] = await conn.execute("SELECT * FROM ACK_OUT");
@@ -394,7 +495,7 @@ app.get('/api/ack_out', async (req, res) => {
 });
 
 // ── GET /api/ack_out/test/true ────────────────────────────────
-app.get('/api/ack_out/test/true', async (req, res) => {
+registerGet(['/ack_out/test/true', '/api/ack_out/test/true'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
         const [rows] = await conn.execute("SELECT * FROM ACK_OUT");
@@ -406,28 +507,29 @@ app.get('/api/ack_out/test/true', async (req, res) => {
 });
 
 // ── GET /api/info ─────────────────────────────────────────────
-        app.get('/api/info', async (req, res) => {
-            res.json({                                                                                                                               
-                ok: true,                                               
-                status: 200,
-                code: 2000,
-                message: 'OK',
-                data: {
-                    team: process.env.TEAM_NAME,
-                    bic: process.env.TEAM_BIC,
-                    members: (process.env.TEAM_MEMBERS || '').split(',')
-                }
-            });
-        });
+registerGet(['/info', '/api/info'], async (req, res) => {
+    res.json({
+        ok: true,
+        status: 200,
+        code: 2000,
+        message: 'OK',
+        data: {
+            team: process.env.TEAM_NAME,
+            bic: process.env.TEAM_BIC,
+            members: (process.env.TEAM_MEMBERS || '').split(',')
+        }
+    });
+});
 
 // ── GET /api/help ─────────────────────────────────────────────
-app.get('/api/help', async (req, res) => {
+registerGet(['/help', '/api/help'], async (req, res) => {
     res.json({
         ok: true,
         status: 200,
         data: [
             { method: 'GET',  url: '/api/help',              beschrijving: 'Dit overzicht' },
             { method: 'GET',  url: '/api/info',              beschrijving: 'Info over onze CB' },
+            { method: 'POST', url: '/api/token',             beschrijving: 'Bearer token ophalen met bic + secret_key' },
             { method: 'GET',  url: '/api/banks',             beschrijving: 'Lijst van alle banken' },
             { method: 'POST', url: '/api/banks',             beschrijving: 'Bank registreren of updaten' },
             { method: 'POST', url: '/api/po_in',             beschrijving: "PO's insturen naar CB" },
