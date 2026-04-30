@@ -41,7 +41,6 @@ async function ensureSchema() {
         await ensureColumn(conn, 'ACK_OUT', 'bb_code', "VARCHAR(10) DEFAULT NULL");
         await ensureColumn(conn, 'ACK_OUT', 'bb_datetime', "DATETIME DEFAULT NULL");
         await ensureColumn(conn, 'LOG', 'bb_code', "VARCHAR(10) DEFAULT NULL");
-        await reconcileAcknowledgements(conn);
     } finally {
         await conn.end();
     }
@@ -62,26 +61,6 @@ async function ensureColumn(conn, tableName, columnName, definition) {
     if (rows.length === 0) {
         await conn.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
     }
-}
-
-async function reconcileAcknowledgements(conn) {
-    await conn.execute(`
-        UPDATE PO_IN po
-        JOIN ACK_IN ack ON ack.po_id = po.po_id
-        SET po.bb_code = ack.bb_code,
-            po.bb_datetime = ack.bb_datetime
-        WHERE ack.bb_code IS NOT NULL
-          AND (po.bb_code IS NULL OR po.bb_datetime IS NULL)
-    `);
-
-    await conn.execute(`
-        UPDATE PO_OUT po
-        JOIN ACK_IN ack ON ack.po_id = po.po_id
-        SET po.bb_code = ack.bb_code,
-            po.bb_datetime = ack.bb_datetime
-        WHERE ack.bb_code IS NOT NULL
-          AND (po.bb_code IS NULL OR po.bb_datetime IS NULL)
-    `);
 }
 
 const issuedTokens = new Map();
@@ -507,17 +486,6 @@ registerPost(['/ack_in', '/api/ack_in'], requireCbAuth, async (req, res) => {
                     `INSERT INTO ACK_OUT (po_id, po_amount, po_message, po_datetime, ob_id, oa_id, ob_code, ob_datetime, cb_code, cb_datetime, bb_id, ba_id, bb_code, bb_datetime)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [ack.po_id, ack.po_amount, ack.po_message, ack.po_datetime, ack.ob_id, ack.oa_id, ack.ob_code, ack.ob_datetime, ack.cb_code, ack.cb_datetime, ack.bb_id, ack.ba_id, ack.bb_code, ack.bb_datetime]
-                );
-
-                // Reflect the beneficiary-bank result on the original PO rows used by the dashboard.
-                await conn.execute(
-                    `UPDATE PO_IN SET bb_code = ?, bb_datetime = ? WHERE po_id = ?`,
-                    [ack.bb_code, ack.bb_datetime, ack.po_id]
-                );
-
-                await conn.execute(
-                    `UPDATE PO_OUT SET bb_code = ?, bb_datetime = ? WHERE po_id = ?`,
-                    [ack.bb_code, ack.bb_datetime, ack.po_id]
                 );
 
                 // Loggen
