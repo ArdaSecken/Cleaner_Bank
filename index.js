@@ -62,13 +62,13 @@ function pruneExpiredTokens() {
     }
 }
 
-function createAccessToken(bic) {
+function createAccessToken(bic, scope = 'bank') {
     pruneExpiredTokens();
 
     const token = crypto.randomBytes(24).toString('hex');
     const expiresAt = Date.now() + TOKEN_TTL_MS;
 
-    issuedTokens.set(token, { bic, expiresAt });
+    issuedTokens.set(token, { bic, scope, expiresAt });
 
     return {
         token,
@@ -98,8 +98,12 @@ function requireCbAuth(req, res, next) {
         return res.status(401).json({ ok: false, status: 401, message: 'Invalid bearer token' });
     }
 
-    req.cbAuth = { bic: tokenEntry.bic };
+    req.cbAuth = { bic: tokenEntry.bic, scope: tokenEntry.scope || 'bank' };
     next();
+}
+
+function isGuiAuth(req) {
+    return req.cbAuth?.scope === 'gui';
 }
 // ── HELPER FUNCTIES ───────────────────────────────────────────
 
@@ -394,7 +398,9 @@ registerPost(['/po_in', '/api/po_in'], requireCbAuth, async (req, res) => {
 registerGet(['/po_out', '/api/po_out'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
-        const [rows] = await conn.execute("SELECT * FROM PO_OUT");
+        const [rows] = isGuiAuth(req)
+            ? await conn.execute("SELECT * FROM PO_OUT")
+            : await conn.execute("SELECT * FROM PO_OUT WHERE bb_id = ?", [req.cbAuth.bic]);
 
         if (rows.length > 0) {
             const ids = rows.map(r => r.po_id);
@@ -412,7 +418,9 @@ registerGet(['/po_out', '/api/po_out'], requireCbAuth, async (req, res) => {
 registerGet(['/po_out/test/true', '/api/po_out/test/true'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
-        const [rows] = await conn.execute("SELECT * FROM PO_OUT");
+        const [rows] = isGuiAuth(req)
+            ? await conn.execute("SELECT * FROM PO_OUT")
+            : await conn.execute("SELECT * FROM PO_OUT WHERE bb_id = ?", [req.cbAuth.bic]);
         await conn.end();
         res.json({ ok: true, status: 200, data: rows });
     } catch (err) {
@@ -479,7 +487,9 @@ registerPost(['/ack_in', '/api/ack_in'], requireCbAuth, async (req, res) => {
 registerGet(['/ack_out', '/api/ack_out'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
-        const [rows] = await conn.execute("SELECT * FROM ACK_OUT");
+        const [rows] = isGuiAuth(req)
+            ? await conn.execute("SELECT * FROM ACK_OUT")
+            : await conn.execute("SELECT * FROM ACK_OUT WHERE ob_id = ?", [req.cbAuth.bic]);
 
         if (rows.length > 0) {
             const ids = rows.map(r => r.po_id);
@@ -497,7 +507,9 @@ registerGet(['/ack_out', '/api/ack_out'], requireCbAuth, async (req, res) => {
 registerGet(['/ack_out/test/true', '/api/ack_out/test/true'], requireCbAuth, async (req, res) => {
     try {
         const conn = await getPool();
-        const [rows] = await conn.execute("SELECT * FROM ACK_OUT");
+        const [rows] = isGuiAuth(req)
+            ? await conn.execute("SELECT * FROM ACK_OUT")
+            : await conn.execute("SELECT * FROM ACK_OUT WHERE ob_id = ?", [req.cbAuth.bic]);
         await conn.end();
         res.json({ ok: true, status: 200, data: rows });
     } catch (err) {
@@ -561,7 +573,15 @@ app.post('/auth/login', async (req, res) => {
         if (!match)
             return res.status(401).json({ ok: false, message: 'Ongeldige gebruikersnaam of wachtwoord' });
 
-        res.json({ ok: true, status: 200, user: { id: rows[0].id, username: rows[0].username, role: rows[0].role } });
+        const { token, expiresAt } = createAccessToken(process.env.TEAM_BIC || 'GUI', 'gui');
+
+        res.json({
+            ok: true,
+            status: 200,
+            user: { id: rows[0].id, username: rows[0].username, role: rows[0].role },
+            apiToken: token,
+            apiTokenExpiresAt: new Date(expiresAt).toISOString()
+        });
     } catch (err) {
         res.status(500).json({ ok: false, message: err.message });
     }

@@ -7,6 +7,16 @@
 const API = '';
 
 let currentUser = null;
+let cbApiToken = null;
+
+function apiFetch(path, options = {}) {
+    const headers = {
+        ...(options.headers || {}),
+        Authorization: 'Bearer ' + cbApiToken
+    };
+
+    return fetch(API + path, { ...options, headers });
+}
 
 async function doLogin() {
     const username = document.getElementById('login-user').value.trim();
@@ -21,6 +31,14 @@ async function doLogin() {
         }).then(r => r.json());
         if (!r.ok) { errEl.textContent = r.message; errEl.style.display = 'block'; return; }
         currentUser = r.user;
+        cbApiToken = r.apiToken;
+
+        if (!cbApiToken) {
+            errEl.textContent = 'Geen API token ontvangen';
+            errEl.style.display = 'block';
+            return;
+        }
+
         document.getElementById('user-name').textContent = currentUser.username;
         document.getElementById('user-role').textContent = currentUser.role;
         document.getElementById('user-avatar').textContent = currentUser.username[0].toUpperCase();
@@ -36,6 +54,7 @@ async function doLogin() {
 
 function doLogout() {
     currentUser = null;
+    cbApiToken = null;
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
     document.getElementById('login-user').value = '';
@@ -141,8 +160,8 @@ function showPage(name, clickedEl) {
 async function loadDashboard() {
     try {
         const [poOut, banks, poIn] = await Promise.all([
-            fetch(API + '/api/po_out/test/true').then(r => r.json()).catch(() => ({ ok: false, data: [] })),
-            fetch(API + '/api/banks').then(r => r.json()).catch(() => ({ ok: false, data: [] })),
+            apiFetch('/api/po_out/test/true').then(r => r.json()).catch(() => ({ ok: false, data: [] })),
+            apiFetch('/api/banks').then(r => r.json()).catch(() => ({ ok: false, data: [] })),
             fetch(API + '/test-po-in').then(r => r.json()).catch(() => ({ ok: false, data: [] })),
         ]);
 
@@ -228,7 +247,7 @@ async function loadTransactions() {
 
 async function loadBanks() {
     try {
-        const r = await fetch(API + '/api/banks').then(r => r.json());
+        const r = await apiFetch('/api/banks').then(r => r.json());
         const tbody = document.getElementById('banks-body');
 
         if (!r.ok || !(r.data || []).length) {
@@ -264,7 +283,7 @@ async function registerBank(btn) {
 
     setBtn(btn, true);
     try {
-        const r = await fetch(API + '/api/banks', {
+        const r = await apiFetch('/api/banks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, name, description })
@@ -306,7 +325,7 @@ async function testValidation(btn) {
 
     setBtn(btn, true);
     try {
-        const r = await fetch(API + '/api/po_in', {
+        const r = await apiFetch('/api/po_in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: [po] })
@@ -352,7 +371,7 @@ async function sendPOIn(btn) {
 
     setBtn(btn, true);
     try {
-        const r = await fetch(API + '/api/po_in', {
+        const r = await apiFetch('/api/po_in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: [po] })
@@ -370,11 +389,11 @@ async function sendPOIn(btn) {
 
 async function fetchPOOut(btn) {
     const test = document.getElementById('po-test').checked;
-    const url  = test ? API + '/api/po_out/test/true' : API + '/api/po_out';
+    const url  = test ? '/api/po_out/test/true' : '/api/po_out';
 
     setBtn(btn, true);
     try {
-        const r = await fetch(url).then(r => r.json());
+        const r = await apiFetch(url).then(r => r.json());
 
         if (r.ok) {
             const count = (r.data || []).length;
@@ -409,7 +428,7 @@ async function sendACKIn(btn) {
 
     setBtn(btn, true);
     try {
-        const r = await fetch(API + '/api/ack_in', {
+        const r = await apiFetch('/api/ack_in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: [po] })
@@ -427,11 +446,11 @@ async function sendACKIn(btn) {
 
 async function fetchACKOut(btn) {
     const test = document.getElementById('ack-test').checked;
-    const url  = test ? API + '/api/ack_out/test/true' : API + '/api/ack_out';
+    const url  = test ? '/api/ack_out/test/true' : '/api/ack_out';
 
     setBtn(btn, true);
     try {
-        const r = await fetch(url).then(r => r.json());
+        const r = await apiFetch(url).then(r => r.json());
 
         if (r.ok) {
             const count = (r.data || []).length;
@@ -557,5 +576,3 @@ setInterval(() => {
 document.getElementById('pi-dt').value     = nowSQL();
 document.getElementById('pi-ob_dt').value  = nowSQL();
 document.getElementById('ack-bb_dt').value = nowSQL();
-
-loadDashboard();
